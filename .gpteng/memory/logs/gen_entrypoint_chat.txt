@@ -1,0 +1,146 @@
+
+2024-06-16T06:44:41.019164
+================================ System Message ================================
+
+You will get information about a codebase that is currently on disk in the current folder.
+The user will ask you to write a script that runs the code in a specific way.
+You will answer with code blocks that include all the necessary terminal commands.
+Do not install globally. Do not use sudo.
+Do not explain the code, just give the commands.
+Do not use placeholders, use example values (like . for a folder argument) if necessary.
+
+
+================================ Human Message =================================
+
+
+        Make a unix script that
+        a) installs dependencies
+        b) runs all necessary parts of the codebase (in parallel if necessary)
+        
+Information about the codebase:
+
+```
+File: requirements.txt
+1 google-api-python-client
+2 google-auth
+3 google-auth-oauthlib
+4 google-auth-httplib2
+5 line-bot-sdk
+
+File: line_token_manager.py
+1 import os
+2 from google.oauth2 import service_account
+3 from googleapiclient.discovery import build
+4 from linebot import LineBot
+5 
+6 class LineTokenManager:
+7     def __init__(self, credentials_file, line_channel_access_token):
+8         self.credentials_file = credentials_file
+9         self.line_channel_access_token = line_channel_access_token
+10         self.service_account_credentials = service_account.Credentials.from_service_account_file(
+11             self.credentials_file, scopes=['https://www.googleapis.com/auth/script.projects']
+12         )
+13         self.service = build('script', 'v1', credentials=self.service_account_credentials)
+14         self.line_bot = LineBot(line_channel_access_token)
+15 
+16     def update_line_token(self, new_token):
+17         # Update Line token in Google Apps Script properties
+18         request_body = {
+19             'requests': [
+20                 {
+21                     'updateScriptProperty': {
+22                         'resource': {
+23                             'scriptId': 'your_script_id',
+24                             'property': {
+25                                 'key': 'LINE_TOKEN',
+26                                 'value': new_token
+27                             }
+28                         }
+29                     }
+30                 }
+31             ]
+32         }
+33         response = self.service.scripts().batchUpdate(body=request_body).execute()
+34         print(f'Updated Line token in Google Apps Script properties: {new_token}')
+35 
+36         # Update Line Webhook
+37         self.line_bot.set_webhook_url('https://your-webhook-url.com')
+38 
+39     def get_line_token(self):
+40         # Get Line token from Google Apps Script properties
+41         response = self.service.scripts().getScriptProperties(scriptId='your_script_id').execute()
+42         for prop in response.get('properties', []):
+43             if prop['key'] == 'LINE_TOKEN':
+44                 return prop['value']
+45         return None
+
+File: line_webhook_handler.py
+1 from linebot import LineBot, WebhookHandler
+2 from linebot.models import MessageEvent, TextMessage
+3 
+4 class LineWebhookHandler:
+5     def __init__(self, line_channel_access_token):
+6         self.line_bot = LineBot(line_channel_access_token)
+7         self.handler = WebhookHandler(line_channel_access_token)
+8 
+9     def handle_webhook(self, request):
+10         events = self.handler.handle(request.get_json(), request.headers)
+11         for event in events:
+12             if isinstance(event, MessageEvent):
+13                 if isinstance(event.message, TextMessage):
+14                     # Handle text message
+15                     print(f'Received text message: {event.message.text}')
+16                     # Process message
+17                     # ...
+18                     # Respond to user
+19                     self.line_bot.reply_message(event.reply_token, 'Thank you for your message!')
+
+File: main.py
+1 from line_token_manager import LineTokenManager
+2 from line_webhook_handler import LineWebhookHandler
+3 
+4 if __name__ == '__main__':
+5     credentials_file = 'path/to/credentials.json'
+6     line_channel_access_token = 'your_line_channel_access_token'
+7 
+8     line_token_manager = LineTokenManager(credentials_file, line_channel_access_token)
+9     line_webhook_handler = LineWebhookHandler(line_channel_access_token)
+10 
+11     # Update Line token
+12     new_token = 'new_line_token'
+13     line_token_manager.update_line_token(new_token)
+14 
+15     # Handle webhook
+16     @app.route('/webhook', methods=['POST'])
+17     def handle_webhook():
+18         request = flask.request
+19         line_webhook_handler.handle_webhook(request)
+20         return 'OK'
+21 
+22     if __name__ == '__main__':
+23         app.run(debug=True)
+
+File: app.py
+1 from flask import Flask, request
+2 app = Flask(__name__)
+3 
+4 from main import handle_webhook
+5 
+6 if __name__ == '__main__':
+7     app.run(debug=True)
+
+```
+
+================================== Ai Message ==================================
+
+Here is the Unix script that installs dependencies and runs the codebase:
+```
+#!/bin/bash
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the application
+python app.py
+```
+Save this script to a file (e.g. `run.sh`), make it executable with `chmod +x run.sh`, and then run it with `./run.sh`.
